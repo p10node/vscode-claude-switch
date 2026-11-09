@@ -1,0 +1,506 @@
+{
+  "name": "claude-account-switch",
+  "displayName": "Claude Account Switch",
+  "description": "Unofficial. Log in, switch and check quota of several Claude Code accounts from the sidebar, while sessions and memory stay shared.",
+  "version": "0.1.0",
+  "publisher": "p10node",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/p10node/vscode-claude-switch"
+  },
+  "homepage": "https://github.com/p10node/vscode-claude-switch#readme",
+  "bugs": {
+    "url": "https://github.com/p10node/vscode-claude-switch/issues"
+  },
+  "galleryBanner": {
+    "color": "#1E1E1E",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "claude",
+    "claude code",
+    "account",
+    "switch",
+    "profile",
+    "quota"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "claudeSwitch",
+          "title": "Claude Accounts",
+          "icon": "media/activity-switch.svg"
+        }
+      ]
+    },
+    "views": {
+      "claudeSwitch": [
+        {
+          "type": "webview",
+          "id": "claudeSwitch.cards",
+          "name": "Accounts",
+          "icon": "media/activity-switch.svg",
+          "contextualTitle": "Claude Accounts",
+          "when": "config.claudeSwitch.viewStyle != 'tree'"
+        },
+        {
+          "id": "claudeSwitch.accounts",
+          "name": "Accounts",
+          "icon": "media/activity-switch.svg",
+          "contextualTitle": "Claude Accounts",
+          "when": "config.claudeSwitch.viewStyle == 'tree'"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "claudeSwitch.addAccount",
+        "title": "Add Account…",
+        "category": "Claude Switch",
+        "icon": "$(person-add)"
+      },
+      {
+        "command": "claudeSwitch.refresh",
+        "title": "Refresh",
+        "category": "Claude Switch",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "claudeSwitch.checkAllQuota",
+        "title": "Check Quota of All Accounts",
+        "category": "Claude Switch",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "claudeSwitch.switch",
+        "title": "Switch to This Account",
+        "category": "Claude Switch",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "claudeSwitch.unlink",
+        "title": "Unlink (Back to Default ~/.claude)",
+        "category": "Claude Switch",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "claudeSwitch.checkQuota",
+        "title": "Check Quota",
+        "category": "Claude Switch",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "claudeSwitch.showUsageDetails",
+        "title": "Show Full /usage Output",
+        "category": "Claude Switch",
+        "icon": "$(output)"
+      },
+      {
+        "command": "claudeSwitch.login",
+        "title": "Log In…",
+        "category": "Claude Switch",
+        "icon": "$(sign-in)"
+      },
+      {
+        "command": "claudeSwitch.logout",
+        "title": "Log Out…",
+        "category": "Claude Switch",
+        "icon": "$(sign-out)"
+      },
+      {
+        "command": "claudeSwitch.startClaude",
+        "title": "Start Claude in Terminal",
+        "category": "Claude Switch",
+        "icon": "$(play)"
+      },
+      {
+        "command": "claudeSwitch.openTerminal",
+        "title": "Open Terminal as This Account",
+        "category": "Claude Switch",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "claudeSwitch.revealFolder",
+        "title": "Reveal Config Folder",
+        "category": "Claude Switch",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "claudeSwitch.revealCredentials",
+        "title": "Show Key Location",
+        "category": "Claude Switch",
+        "icon": "$(key)"
+      },
+      {
+        "command": "claudeSwitch.copyPath",
+        "title": "Copy Config Folder Path",
+        "category": "Claude Switch",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "claudeSwitch.unifyShared",
+        "title": "Unify Sessions & Memory with ~/.claude…",
+        "category": "Claude Switch",
+        "icon": "$(link)"
+      },
+      {
+        "command": "claudeSwitch.rename",
+        "title": "Rename…",
+        "category": "Claude Switch",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "claudeSwitch.remove",
+        "title": "Remove Account…",
+        "category": "Claude Switch",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "claudeSwitch.openRoot",
+        "title": "Reveal Profiles Folder",
+        "category": "Claude Switch",
+        "icon": "$(folder-library)"
+      },
+      {
+        "command": "claudeSwitch.installCli",
+        "title": "Install / Update Claude Code CLI…",
+        "category": "Claude Switch",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "claudeSwitch.shellIntegration",
+        "title": "Set Up Shell Integration…",
+        "category": "Claude Switch",
+        "icon": "$(terminal-bash)"
+      },
+      {
+        "command": "claudeSwitch.useTreeView",
+        "title": "Show as Tree",
+        "category": "Claude Switch",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "claudeSwitch.useCardView",
+        "title": "Show as Cards",
+        "category": "Claude Switch",
+        "icon": "$(preview)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "claudeSwitch.addAccount",
+          "when": "view =~ /^claudeSwitch\\.(accounts|cards)$/",
+          "group": "navigation@1"
+        },
+        {
+          "command": "claudeSwitch.checkAllQuota",
+          "when": "view =~ /^claudeSwitch\\.(accounts|cards)$/",
+          "group": "navigation@2"
+        },
+        {
+          "command": "claudeSwitch.refresh",
+          "when": "view =~ /^claudeSwitch\\.(accounts|cards)$/",
+          "group": "navigation@3"
+        },
+        {
+          "command": "claudeSwitch.unlink",
+          "when": "view =~ /^claudeSwitch\\.(accounts|cards)$/ && claudeSwitch.customActive",
+          "group": "1_active@1"
+        },
+        {
+          "command": "claudeSwitch.openRoot",
+          "when": "view =~ /^claudeSwitch\\.(accounts|cards)$/",
+          "group": "2_misc@1"
+        },
+        {
+          "command": "claudeSwitch.shellIntegration",
+          "when": "view =~ /^claudeSwitch\\.(accounts|cards)$/",
+          "group": "2_misc@2"
+        },
+        {
+          "command": "claudeSwitch.useTreeView",
+          "when": "view == claudeSwitch.cards",
+          "group": "3_view@1"
+        },
+        {
+          "command": "claudeSwitch.useCardView",
+          "when": "view == claudeSwitch.accounts",
+          "group": "3_view@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "claudeSwitch.switch",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b.*\\binactive\\b/",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeSwitch.unlink",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b.*\\bactive\\b.*\\bcustom\\b/",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeSwitch.login",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b.*\\bloggedout\\b/",
+          "group": "inline@2"
+        },
+        {
+          "command": "claudeSwitch.checkQuota",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b.*\\bloggedin\\b/",
+          "group": "inline@2"
+        },
+        {
+          "command": "claudeSwitch.revealFolder",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b/",
+          "group": "inline@3"
+        },
+        {
+          "command": "claudeSwitch.switch",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b.*\\binactive\\b/",
+          "group": "1_switch@1"
+        },
+        {
+          "command": "claudeSwitch.unlink",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b.*\\bactive\\b.*\\bcustom\\b/",
+          "group": "1_switch@2"
+        },
+        {
+          "command": "claudeSwitch.checkQuota",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b.*\\bloggedin\\b/",
+          "group": "2_quota@1"
+        },
+        {
+          "command": "claudeSwitch.showUsageDetails",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b.*\\bhasusage\\b/",
+          "group": "2_quota@2"
+        },
+        {
+          "command": "claudeSwitch.startClaude",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b/",
+          "group": "3_terminal@1"
+        },
+        {
+          "command": "claudeSwitch.openTerminal",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b/",
+          "group": "3_terminal@2"
+        },
+        {
+          "command": "claudeSwitch.login",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b/",
+          "group": "4_auth@1"
+        },
+        {
+          "command": "claudeSwitch.logout",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b.*\\bloggedin\\b/",
+          "group": "4_auth@2"
+        },
+        {
+          "command": "claudeSwitch.revealFolder",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b/",
+          "group": "5_files@1"
+        },
+        {
+          "command": "claudeSwitch.revealCredentials",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b/",
+          "group": "5_files@2"
+        },
+        {
+          "command": "claudeSwitch.copyPath",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b/",
+          "group": "5_files@3"
+        },
+        {
+          "command": "claudeSwitch.unifyShared",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b.*\\bcustom\\b/",
+          "group": "5_files@4"
+        },
+        {
+          "command": "claudeSwitch.rename",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b/",
+          "group": "6_edit@1"
+        },
+        {
+          "command": "claudeSwitch.remove",
+          "when": "view == claudeSwitch.accounts && viewItem =~ /^profile\\b.*\\bcustom\\b/",
+          "group": "6_edit@2"
+        },
+        {
+          "command": "claudeSwitch.login",
+          "when": "view == claudeSwitch.accounts && viewItem == detail.account.loggedout",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeSwitch.checkQuota",
+          "when": "view == claudeSwitch.accounts && viewItem == detail.quota",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeSwitch.showUsageDetails",
+          "when": "view == claudeSwitch.accounts && viewItem == detail.quota",
+          "group": "inline@2"
+        },
+        {
+          "command": "claudeSwitch.copyPath",
+          "when": "view == claudeSwitch.accounts && viewItem == detail.folder",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeSwitch.revealFolder",
+          "when": "view == claudeSwitch.accounts && viewItem == detail.folder",
+          "group": "inline@2"
+        },
+        {
+          "command": "claudeSwitch.revealCredentials",
+          "when": "view == claudeSwitch.accounts && viewItem == detail.key",
+          "group": "inline@1"
+        },
+        {
+          "command": "claudeSwitch.unifyShared",
+          "when": "view == claudeSwitch.accounts && viewItem == detail.links.conflict",
+          "group": "inline@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "claudeSwitch.useTreeView",
+          "when": "config.claudeSwitch.viewStyle != 'tree'"
+        },
+        {
+          "command": "claudeSwitch.useCardView",
+          "when": "config.claudeSwitch.viewStyle == 'tree'"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Claude Account Switch",
+      "properties": {
+        "claudeSwitch.viewStyle": {
+          "type": "string",
+          "enum": [
+            "cards",
+            "tree"
+          ],
+          "enumDescriptions": [
+            "Accounts list with a filter box; click an account for its quota, folder, key and actions.",
+            "Native tree: expand an account to see its details."
+          ],
+          "default": "cards",
+          "description": "How the Accounts panel shows accounts."
+        },
+        "claudeSwitch.claudePath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "Path to the `claude` executable. Empty = auto-detect (`PATH`, common install locations, then the binary bundled with the official Claude Code extension)."
+        },
+        "claudeSwitch.profilesRoot": {
+          "type": "string",
+          "default": "~/.claude-switch",
+          "scope": "machine",
+          "markdownDescription": "Folder holding the account registry (`profiles.json`), the per-account config folders (`profiles/<name>`) and the shell env files. Changing it requires a window reload."
+        },
+        "claudeSwitch.applyToTerminals": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Set `CLAUDE_CONFIG_DIR` of the active account in new integrated terminals."
+        },
+        "claudeSwitch.syncClaudeCodeExtension": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Also write `CLAUDE_CONFIG_DIR` into `#claudeCode.environmentVariables#` so new chats of the official Claude Code extension use the active account."
+        },
+        "claudeSwitch.reloadAfterSwitch": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "ask",
+            "never"
+          ],
+          "enumDescriptions": [
+            "Reload the window when Claude Code chats are open, so they reopen on the new account with the same session. Waits or asks first if a chat is still working.",
+            "Ask before reloading.",
+            "Never reload. Open chats keep the previous account until you reload yourself."
+          ],
+          "default": "auto",
+          "markdownDescription": "After switching, chats already open in the Claude Code extension still run on the previous account. Reloading the window makes Claude Code reopen them, same session, on the new account."
+        },
+        "claudeSwitch.writeShellEnvFiles": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Write `env.sh`, `env.fish`, `env.ps1` and `active` into the profiles folder, so shells outside VS Code can follow the active account (see *Set Up Shell Integration*)."
+        },
+        "claudeSwitch.shareData": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Keep sessions, memory, history, settings, CLAUDE.md, skills, plugins… identical for every account: each account folder symlinks them from `~/.claude`. Only the login (`.claude.json` and its key) stays per account."
+        },
+        "claudeSwitch.shareExclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "statsig",
+            "telemetry",
+            "debug",
+            "cache",
+            "state",
+            "stats-cache.json",
+            ".last-cleanup",
+            ".DS_Store"
+          ],
+          "markdownDescription": "Entries of `~/.claude` that are NOT shared. `.credentials.json`, `.claude.json` and `backups` are never shared."
+        },
+        "claudeSwitch.seedGlobalConfig": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When creating an account, copy non-account preferences (onboarding done, theme, trusted projects, MCP servers) from `~/.claude.json` into the new account's `.claude.json`. Never copies login data."
+        },
+        "claudeSwitch.quotaAutoRefreshMinutes": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "markdownDescription": "Run `/usage` for every logged-in account every N minutes. `0` = only on demand (quota still updates from Claude Code's own cache whenever you refresh)."
+        },
+        "claudeSwitch.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the active account in the status bar."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "clean": "bun -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
+    "build": "bun scripts/build.ts",
+    "watch": "bun scripts/build.ts --watch",
+    "check": "tsc -p . && tsc -p src/webview && tsc -p test",
+    "test": "bun test",
+    "package": "bun run clean && bun run check && bun test && bun scripts/build.ts --minify && vsce package --no-dependencies",
+    "publish:ovsx": "bun run package && ovsx publish claude-account-switch-$npm_package_version.vsix"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "~1.90.0",
+    "@vscode/codicons": "^0.0.46-24",
+    "@vscode/vsce": "^4.1.0",
+    "ovsx": "^1.3.0",
+    "typescript": "^5.6.0"
+  }
+}

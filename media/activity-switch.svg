@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <!-- switch loop around an AI sparkle -->
+  <path d="M4.27 9.93A8 8 0 0 1 18.93 8"/>
+  <path d="M19.49 4.85 18.93 8l-3.01-1.09"/>
+  <path d="M19.73 14.07A8 8 0 0 1 5.07 16"/>
+  <path d="M4.51 19.15 5.07 16l3.01 1.09"/>
+  <path fill="currentColor" stroke="none" d="M12 8.2Q12.532 11.468 15.8 12Q12.532 12.532 12 15.8Q11.468 12.532 8.2 12Q11.468 11.468 12 8.2Z"/>
+</svg>

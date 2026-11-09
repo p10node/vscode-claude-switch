@@ -1,0 +1,404 @@
+/* Claude Account Switch — Accounts panel in Quick Pick style. Every color comes from the active theme. */
+
+:root {
+  --row-hover: var(--vscode-list-hoverBackground);
+  --row-open: var(--vscode-quickInputList-focusBackground, var(--vscode-list-activeSelectionBackground));
+  --row-open-fg: var(--vscode-quickInputList-focusForeground, var(--vscode-list-activeSelectionForeground, var(--vscode-foreground)));
+  --muted: var(--vscode-descriptionForeground);
+  --sep-fg: var(--vscode-pickerGroup-foreground);
+  --sep-border: var(--vscode-pickerGroup-border);
+  --ok: var(--vscode-progressBar-background);
+  --warn: var(--vscode-editorWarning-foreground);
+  --crit: var(--vscode-editorError-foreground, var(--vscode-errorForeground));
+  --pass: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+  --track: color-mix(in srgb, var(--vscode-foreground) 14%, transparent);
+  --guide: var(--vscode-tree-indentGuidesStroke, color-mix(in srgb, var(--vscode-foreground) 18%, transparent));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 4px 0 12px;
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  background: transparent;
+}
+
+button {
+  font: inherit;
+}
+
+.muted { color: var(--muted); }
+.pass { color: var(--pass); }
+.warn { color: var(--warn); }
+.crit { color: var(--crit); }
+.small { font-size: 12px; }
+.mono {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 11.5px;
+}
+
+/* ───────── container + filter ───────── */
+
+.qp {
+  display: flex;
+  flex-direction: column;
+}
+
+.qp-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  margin: 0 12px 6px 16px;
+  padding: 0 2px 0 6px;
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  cursor: text;
+}
+
+.qp-input:focus-within {
+  border-color: var(--vscode-focusBorder);
+}
+
+.qp-input > .codicon {
+  color: var(--muted);
+}
+
+.qp-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.qp-input input::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+/* ───────── separators ───────── */
+
+.qp-sep {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+  padding: 4px 12px 2px;
+  border-top: 1px solid var(--sep-border);
+  color: var(--sep-fg);
+  font-size: 11px;
+}
+
+.qp-sep.first {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.qp-sep.spacer {
+  padding: 0;
+  margin-top: 6px;
+}
+
+/* ───────── rows ───────── */
+
+.qp-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto 16px;
+  align-items: start;
+  gap: 8px;
+  padding: 4px 12px 4px 16px;
+  cursor: pointer;
+  outline: none;
+}
+
+.qp-row:hover {
+  background: var(--row-hover);
+}
+
+.qp-row.open {
+  background: var(--row-open);
+  color: var(--row-open-fg);
+}
+
+.qp-row:focus-visible {
+  outline: 1px solid var(--vscode-list-focusOutline, var(--vscode-focusBorder));
+  outline-offset: -1px;
+}
+
+.qp-row > .codicon {
+  margin-top: 2px;
+}
+
+.qp-row.action,
+.qp-row.notice {
+  grid-template-columns: 16px minmax(0, 1fr);
+}
+
+.qp-row.action {
+  align-items: center;
+}
+
+.qp-row.action > .codicon {
+  margin-top: 0;
+}
+
+.qp-main {
+  min-width: 0;
+}
+
+.qp-l1 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.qp-name {
+  flex: none;
+}
+
+.qp-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-size: 0.9em;
+  opacity: 0.75;
+}
+
+.qp-l2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.qp-row.open .qp-desc,
+.qp-row.open .qp-l2 {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.qp-tools {
+  grid-column: 3;
+  display: none;
+  align-items: center;
+}
+
+.qp-row:hover .qp-tools,
+.qp-row:focus-within .qp-tools,
+.qp-row.open .qp-tools {
+  display: flex;
+}
+
+.qp-chev {
+  grid-column: 4;
+  margin-top: 2px;
+  color: var(--muted);
+  transition: transform 0.12s ease;
+}
+
+.qp-row.open .qp-chev {
+  transform: rotate(180deg);
+  color: inherit;
+}
+
+.qp-empty {
+  padding: 8px 16px;
+  color: var(--muted);
+}
+
+.tool {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--vscode-icon-foreground);
+  cursor: pointer;
+}
+
+.tool:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.tool:focus-visible,
+.btn:focus-visible,
+.link:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.qp-input .tool[hidden] {
+  display: none;
+}
+
+/* ───────── details ───────── */
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 2px 12px 8px 23px;
+  padding: 6px 0 4px 17px;
+  border-left: 1px solid var(--guide);
+  font-size: 12.5px;
+}
+
+.limits {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.limit-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.pct {
+  font-family: var(--vscode-editor-font-family);
+  font-variant-numeric: tabular-nums;
+}
+
+.meter {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ok);
+  transition: width 0.3s ease;
+}
+
+
+.limit .small {
+  margin-top: 3px;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.field-k {
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.field-v {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-tools {
+  display: flex;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.btn .codicon {
+  font-size: 14px;
+}
+
+.btn.primary {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.btn.primary:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.btn.secondary {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.btn.secondary:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-left: -4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--guide);
+}
+
+.tool.danger:hover {
+  color: var(--vscode-errorForeground);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--vscode-textLink-activeForeground);
+  text-decoration: underline;
+}
+
+.link.danger {
+  color: var(--vscode-errorForeground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qp-chev,
+  .fill {
+    transition: none;
+  }
+}

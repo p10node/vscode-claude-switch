@@ -1,0 +1,108 @@
+# Publishes the extension when a version tag is pushed — plain git, no GitHub CLI needed:
+#
+#   1. Bump "version" in package.json and add a "## <version>" section to CHANGELOG.md. Commit.
+#   2. git tag v<version> && git push origin main v<version>
+#
+# The workflow creates the GitHub Release (notes = that CHANGELOG section), attaches the .vsix,
+# then publishes it to both stores.
+#
+# VS Code Marketplace: Trusted Publishing (OIDC), no token. One-time setup on
+#   https://marketplace.visualstudio.com/manage → publisher p10node → Trusted Publishing → Create:
+#     Repository owner  p10node
+#     Repository        vscode-claude-switch
+#     Workflow          publish.yml
+#     Environment       (empty)
+# Open VSX: the first version must be published with a token (repository secret OVSX_PAT).
+#   After that, once you own the namespace, register Trusted Publishing on
+#   https://open-vsx.org/user-settings/trusted-publishers (same owner/repo/workflow, no environment)
+#   and delete OVSX_PAT: without the secret the workflow publishes with --trusted-publishing.
+
+name: Publish
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write # attach the .vsix to the release
+  id-token: write # OIDC token for Marketplace Trusted Publishing
+
+concurrency:
+  group: publish-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # vsce 4 needs Node >= 22
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Check tag matches package.json
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "${TAG#v}" != "$VERSION" ]; then
+            echo "::error::Release tag $TAG does not match package.json version $VERSION"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Type-check and test
+        run: |
+          bun run check
+          bun test
+
+      - name: Build and package
+        run: |
+          bun run clean
+          bun scripts/build.ts --minify
+          bunx vsce package --no-dependencies --out "claude-account-switch-$VERSION.vsix"
+
+      - name: Create the GitHub release with the .vsix (before publishing, so it exists even if a store fails)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          awk -v v="$VERSION" '/^## /{if (p) exit; if ($2 == v) {p = 1; next}} p' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Release $TAG" > notes.md
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "claude-account-switch-$VERSION.vsix" --clobber
+          else
+            gh release create "$TAG" "claude-account-switch-$VERSION.vsix" --title "$TAG" --notes-file notes.md --verify-tag
+          fi
+
+      - name: Publish to VS Code Marketplace (Trusted Publishing)
+        if: github.repository == 'p10node/vscode-claude-switch'
+        run: bunx vsce publish --oidc --no-dependencies --packagePath "claude-account-switch-$VERSION.vsix"
+
+      - name: Publish to Open VSX
+        if: github.repository == 'p10node/vscode-claude-switch'
+        run: |
+          FLAGS=""
+          # OVSX_PAT set → token; otherwise Trusted Publishing (fails loudly if not registered).
+          if [ -z "$OVSX_PAT" ]; then FLAGS="$FLAGS --trusted-publishing"; fi
+          bunx ovsx publish "claude-account-switch-$VERSION.vsix" $FLAGS
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### claude-account-switch ${VERSION:-?}"
+            echo
+            echo "| Target              | Result                                     |"
+            echo "| ------------------- | ------------------------------------------ |"
+            echo "| VS Code Marketplace | see step “Publish to VS Code Marketplace”  |"
+            echo "| Open VSX            | $([ -n "$OVSX_PAT" ] && echo 'access token' || echo 'Trusted Publishing') |"
+          } >> "$GITHUB_STEP_SUMMARY"

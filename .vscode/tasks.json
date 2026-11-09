@@ -1,0 +1,34 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "bun run build",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "clear": true },
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "watch",
+      "type": "shell",
+      "command": "bun run watch",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent" }
+    },
+    {
+      "label": "check",
+      "type": "shell",
+      "command": "bun run check",
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "bun test",
+      "problemMatcher": [],
+      "group": "test"
+    }
+  ]
+}

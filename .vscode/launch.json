@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Your real setup: same settings, same ~/.claude-switch, same Claude Code extension.
+      "name": "Run Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      "preLaunchTask": "build"
+    },
+    {
+      // Isolated: own VS Code settings/extensions + own profiles folder, so switching here
+      // never touches your real claudeCode.environmentVariables or ~/.claude-switch.
+      // The "Default" account is still your real ~/.claude.
+      "name": "Run Extension (sandbox)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--user-data-dir=${workspaceFolder}/.vscode-test/user-data",
+        "--extensions-dir=${workspaceFolder}/.vscode-test/extensions"
+      ],
+      "env": { "CLAUDE_SWITCH_ROOT": "${workspaceFolder}/.vscode-test/claude-switch" },
+      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      "preLaunchTask": "build"
+    }
+  ]
+}
