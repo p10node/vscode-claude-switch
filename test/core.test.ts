@@ -6,6 +6,7 @@ import * as path from 'path';
 import { test } from 'bun:test';
 import { keychainService, parseAuthStatus, parseCachedUsage, parseUsageText } from '../src/claude';
 import { syncLinks, unifyWithShared, removeLinks } from '../src/links';
+import { SpacedQueue } from '../src/queue';
 import { ProfileStore } from '../src/store';
 import { canonicalDir, slugify } from '../src/util';
 
@@ -205,4 +206,92 @@ test('ProfileStore: pending accounts are confirmed after the first login', () =>
   assert.strictEqual(new ProfileStore(root).get(p.id)?.pending, true);
   s.confirm(p.id);
   assert.strictEqual(new ProfileStore(root).get(p.id)?.pending, false);
+});
+
+// ───────────────────────── SpacedQueue ─────────────────────────
+
+function fakeClock() {
+  let t = 0;
+  const sleeps: number[] = [];
+  return {
+    now: () => t,
+    sleep: async (ms: number) => {
+      sleeps.push(ms);
+      t += ms;
+    },
+    tick: (ms: number) => (t += ms),
+    sleeps,
+  };
+}
+
+test('SpacedQueue runs one job at a time with a gap, dedupes keys, manual check goes first', async () => {
+  const clock = fakeClock();
+  const ran: string[] = [];
+  let concurrent = 0;
+  let peak = 0;
+  const q = new SpacedQueue<string>({
+    now: clock.now,
+    sleep: clock.sleep,
+    spacingMs: () => 10_000,
+    run: async (key) => {
+      concurrent++;
+      peak = Math.max(peak, concurrent);
+      ran.push(key);
+      clock.tick(1000); // the run itself takes a second
+      await Promise.resolve();
+      concurrent--;
+    },
+  });
+  const all = q.enqueue(['a', 'b', 'c'], { quiet: true });
+  assert.ok(q.has('b') && q.has('c'));
+  const again = q.enqueue(['b'], { quiet: true }); // already queued → no duplicate
+  assert.strictEqual(q.size, 2);
+  const manual = q.enqueue(['c'], { front: true }); // jumps ahead of b
+  await Promise.all([all, again, manual]);
+  assert.deepStrictEqual(ran, ['a', 'c', 'b']);
+  assert.strictEqual(peak, 1);
+  assert.deepStrictEqual(clock.sleeps, [10_000, 10_000]); // no wait before the first run
+  assert.strictEqual(q.size, 0);
+  assert.strictEqual(q.running, undefined);
+});
+
+test('SpacedQueue clear drops only the matching jobs and resolves their promises', async () => {
+  const clock = fakeClock();
+  const ran: string[] = [];
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  const q = new SpacedQueue<string>({
+    now: clock.now,
+    sleep: clock.sleep,
+    spacingMs: () => 0,
+    run: async (key) => {
+      ran.push(key);
+      if (key === 'first') await gate;
+    },
+  });
+  const first = q.enqueue(['first']);
+  const auto = q.enqueue(['x', 'y'], { quiet: true });
+  const loud = q.enqueue(['z']);
+  q.clear((quiet) => quiet); // like turning the background scan off
+  await auto; // dropped jobs resolve right away
+  assert.ok(!q.has('x') && !q.has('y') && q.has('z'));
+  release();
+  await Promise.all([first, loud]);
+  assert.deepStrictEqual(ran, ['first', 'z']);
+});
+
+test('SpacedQueue dispose stops after the running job', async () => {
+  const ran: string[] = [];
+  const q = new SpacedQueue<string>({
+    spacingMs: () => 0,
+    sleep: async () => {},
+    run: async (key) => {
+      ran.push(key);
+      if (key === 'a') q.dispose();
+    },
+  });
+  await q.enqueue(['a', 'b']);
+  assert.deepStrictEqual(ran, ['a']);
+  await q.enqueue(['c']); // no-op after dispose
+  assert.deepStrictEqual(ran, ['a']);
 });

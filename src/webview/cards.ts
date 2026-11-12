@@ -141,6 +141,7 @@ const shortDate = (s: string): string => s.split(/,| at /)[0].trim();
 
 function statusIcon(p: CardProfile): HTMLElement {
   if (p.busy && p.busy !== 'auth') return icon('loading', 'codicon-modifier-spin');
+  if (p.queued) return icon('clock', 'muted');
   if (p.folderMissing) return icon('warning', 'warn');
   if (p.active) return icon('pass-filled', 'pass');
   if (p.loggedIn) return icon('account');
@@ -148,7 +149,8 @@ function statusIcon(p: CardProfile): HTMLElement {
 }
 
 function summary(p: CardProfile): Child[] {
-  if (p.busy === 'usage') return ['Checking quota…'];
+  if (p.busy === 'usage' && !p.usage?.limits.length) return ['Checking quota…'];
+  if (p.queued && !p.usage?.limits.length) return ['Quota check queued…'];
   if (p.busy === 'login') return ['Waiting for login in the terminal…'];
   if (p.busy === 'logout') return ['Logging out…'];
   if (p.folderMissing) return [h('span', { class: 'warn', text: 'Config folder is missing' })];

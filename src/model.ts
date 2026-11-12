@@ -18,6 +18,8 @@ export interface CardProfile {
   plan?: string;
   org?: string;
   busy?: 'auth' | 'usage' | 'login' | 'logout';
+  /** Waiting for its turn in the quota queue. */
+  queued?: boolean;
   folderMissing: boolean;
   usage?: { limits: CardLimit[]; fetchedAt: number; source: 'cli' | 'cache'; hasRaw: boolean };
   usageError?: string;

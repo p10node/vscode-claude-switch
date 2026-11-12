@@ -34,6 +34,7 @@ export function buildCardsState(host: TreeHost): CardsState {
         plan: planOf(st),
         org: st.auth?.orgName ?? st.meta?.orgName,
         busy: st.busy,
+        queued: !!st.queued,
         folderMissing: !!st.folderMissing,
         usage: st.usage
           ? { limits: st.usage.limits, fetchedAt: st.usage.fetchedAt, source: st.usage.source, hasRaw: !!st.usage.raw }

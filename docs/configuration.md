@@ -2,20 +2,22 @@
 
 ## Settings
 
-| Setting                                | Default            | Description                                                                          |
-| -------------------------------------- | ------------------ | ------------------------------------------------------------------------------------ |
-| `claudeSwitch.viewStyle`               | `cards`            | `cards` or `tree`                                                                    |
-| `claudeSwitch.claudePath`              | `""`               | Path to `claude`; empty = auto-detect                                                |
-| `claudeSwitch.profilesRoot`            | `~/.claude-switch` | Registry, account folders and shell env files                                        |
-| `claudeSwitch.applyToTerminals`        | `true`             | Set `CLAUDE_CONFIG_DIR` in new integrated terminals                                  |
-| `claudeSwitch.syncClaudeCodeExtension` | `true`             | Write `CLAUDE_CONFIG_DIR` into `claudeCode.environmentVariables`                     |
-| `claudeSwitch.reloadAfterSwitch`       | `auto`             | Reload so open Claude Code chats reopen on the new account: `auto`, `ask` or `never` |
-| `claudeSwitch.writeShellEnvFiles`      | `true`             | Write `env.sh`, `env.fish`, `env.ps1` and `active`                                   |
-| `claudeSwitch.shareData`               | `true`             | Symlink sessions, memory, settings… from `~/.claude`                                 |
-| `claudeSwitch.shareExclude`            | caches, telemetry  | Entries of `~/.claude` that are not shared                                           |
-| `claudeSwitch.seedGlobalConfig`        | `true`             | Copy non-login preferences into new accounts once                                    |
-| `claudeSwitch.quotaAutoRefreshMinutes` | `0`                | Run `/usage` for every account every N minutes (0 = off)                             |
-| `claudeSwitch.showStatusBar`           | `true`             | Show the active account and its usage in the status bar                              |
+| Setting                                 | Default            | Description                                                                          |
+| --------------------------------------- | ------------------ | ------------------------------------------------------------------------------------ |
+| `claudeSwitch.viewStyle`                | `cards`            | `cards` or `tree`                                                                    |
+| `claudeSwitch.claudePath`               | `""`               | Path to `claude`; empty = auto-detect                                                |
+| `claudeSwitch.profilesRoot`             | `~/.claude-switch` | Registry, account folders and shell env files                                        |
+| `claudeSwitch.applyToTerminals`         | `true`             | Set `CLAUDE_CONFIG_DIR` in new integrated terminals                                  |
+| `claudeSwitch.syncClaudeCodeExtension`  | `true`             | Write `CLAUDE_CONFIG_DIR` into `claudeCode.environmentVariables`                     |
+| `claudeSwitch.reloadAfterSwitch`        | `auto`             | Reload so open Claude Code chats reopen on the new account: `auto`, `ask` or `never` |
+| `claudeSwitch.writeShellEnvFiles`       | `true`             | Write `env.sh`, `env.fish`, `env.ps1` and `active`                                   |
+| `claudeSwitch.shareData`                | `true`             | Symlink sessions, memory, settings… from `~/.claude`                                 |
+| `claudeSwitch.shareExclude`             | caches, telemetry  | Entries of `~/.claude` that are not shared                                           |
+| `claudeSwitch.seedGlobalConfig`         | `true`             | Copy non-login preferences into new accounts once                                    |
+| `claudeSwitch.quotaAutoRefresh`         | `true`             | Re-check every account's quota in the background, one at a time                      |
+| `claudeSwitch.quotaAutoRefreshMinutes`  | `5`                | Minutes between two background scans                                                 |
+| `claudeSwitch.quotaCheckSpacingSeconds` | `10`               | Pause between two `/usage` runs (queue)                                              |
+| `claudeSwitch.showStatusBar`            | `true`             | Show the active account and its usage in the status bar                              |
 
 ## Views
 

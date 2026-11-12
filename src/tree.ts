@@ -11,6 +11,8 @@ export interface ProfileState {
   usage?: UsageInfo;
   usageError?: string;
   busy?: 'auth' | 'usage' | 'login' | 'logout';
+  /** Waiting in the quota queue (one `/usage` runs at a time). */
+  queued?: boolean;
   links?: LinkReport;
   keychain?: { service: string; exists?: boolean };
   folderMissing?: boolean;
@@ -170,6 +172,7 @@ export class AccountsTree implements vscode.TreeDataProvider<TreeNode> {
     item.description = parts.join(' · ');
 
     if (st.busy) item.iconPath = new vscode.ThemeIcon('loading~spin');
+    else if (st.queued) item.iconPath = new vscode.ThemeIcon('clock');
     else if (st.folderMissing) item.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('list.warningForeground'));
     else if (active) item.iconPath = new vscode.ThemeIcon('pass-filled', new vscode.ThemeColor('charts.green'));
     else if (!loggedIn) item.iconPath = new vscode.ThemeIcon('circle-slash', new vscode.ThemeColor('disabledForeground'));
@@ -233,6 +236,8 @@ export class AccountsTree implements vscode.TreeDataProvider<TreeNode> {
     // quota
     if (st.busy === 'usage') {
       add('quota-busy', 'Checking quota (/usage)…', new vscode.ThemeIcon('loading~spin'));
+    } else if (st.queued) {
+      add('quota-queued', 'Quota check queued', new vscode.ThemeIcon('clock'), 'one /usage at a time');
     }
     if (st.usage?.limits.length) {
       for (const [i, l] of st.usage.limits.entries()) {
@@ -249,7 +254,7 @@ export class AccountsTree implements vscode.TreeDataProvider<TreeNode> {
         contextValue: 'detail.quota',
         tooltip: st.usage.raw?.split(/\r?\n/).slice(0, 8).join('\n'),
       });
-    } else if (loggedIn && st.busy !== 'usage') {
+    } else if (loggedIn && st.busy !== 'usage' && !st.queued) {
       add('quota-check', 'Check quota', new vscode.ThemeIcon('dashboard'), 'runs /usage', { command: 'claudeSwitch.checkQuota' });
     }
     if (st.usageError) {

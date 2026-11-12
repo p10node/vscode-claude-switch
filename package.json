@@ -471,11 +471,22 @@
           "default": true,
           "markdownDescription": "When creating an account, copy non-account preferences (onboarding done, theme, trusted projects, MCP servers) from `~/.claude.json` into the new account's `.claude.json`. Never copies login data."
         },
+        "claudeSwitch.quotaAutoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Re-check the quota of every logged-in account in the background, one account at a time (see `#claudeSwitch.quotaAutoRefreshMinutes#` and `#claudeSwitch.quotaCheckSpacingSeconds#`). Off = only on demand; quota still updates from Claude Code's own cache whenever you refresh."
+        },
         "claudeSwitch.quotaAutoRefreshMinutes": {
           "type": "number",
-          "default": 0,
+          "default": 5,
+          "minimum": 1,
+          "markdownDescription": "Minutes between two background quota scans. Only the focused window scans, and accounts checked less than half an interval ago (for example by another window) are skipped."
+        },
+        "claudeSwitch.quotaCheckSpacingSeconds": {
+          "type": "number",
+          "default": 10,
           "minimum": 0,
-          "markdownDescription": "Run `/usage` for every logged-in account every N minutes. `0` = only on demand (quota still updates from Claude Code's own cache whenever you refresh)."
+          "markdownDescription": "Pause between two `/usage` runs. Quota checks are queued and run one account at a time, with this gap, so several accounts do not hit the API at once."
         },
         "claudeSwitch.showStatusBar": {
           "type": "boolean",

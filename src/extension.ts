@@ -7,6 +7,7 @@ import { Activator, CLAUDE_CODE_EXTENSION_ID, claudeCodeConfigDir } from './acti
 import { CARDS_VIEW_ID, CardsViewProvider } from './cardsView';
 import * as cli from './claude';
 import { removeLinks, seedGlobalConfig, syncLinks, unifyWithShared } from './links';
+import { SpacedQueue } from './queue';
 import { claudeCodeChats } from './sessions';
 import { DEFAULT_CONFIG_DIR, DEFAULT_ID, Profile, ProfileStore } from './store';
 import { createAccountTerminal } from './terminal';
@@ -15,6 +16,9 @@ import { canonicalDir, errorText, isDirectory, tildify } from './util';
 
 const USAGE_KEY = 'claudeSwitch.usage';
 const LOGIN_TIMEOUT_MS = 15 * 60_000;
+/** First background quota scan after start-up, and retry step while the window is not focused. */
+const AUTO_QUOTA_MIN_DELAY_MS = 30_000;
+const AUTO_QUOTA_RETRY_MS = 60_000;
 const VIEW_ID = 'claudeSwitch.accounts';
 const cfg = () => vscode.workspace.getConfiguration('claudeSwitch');
 
@@ -46,6 +50,18 @@ class Controller implements TreeHost, vscode.Disposable {
   /** CLAUDE_CONFIG_DIR last applied in this window ('' = default). */
   private lastAppliedDir: string | undefined;
   private autoTimer: NodeJS.Timeout | undefined;
+  private lastAutoScanAt = 0;
+  private lastAutoScanEndAt = 0;
+  private disposed = false;
+  /** Every `/usage` goes through here: one at a time, with a gap, so several accounts do not hit the API at once. */
+  private readonly quota = new SpacedQueue<string>({
+    run: (id, quiet) => this.runUsage(id, quiet),
+    spacingMs: () => Math.max(0, cfg().get<number>('quotaCheckSpacingSeconds', 10)) * 1000,
+    onChange: () => {
+      for (const p of this.store.all()) this.stateOf(p.id).queued = this.quota.has(p.id);
+      this.render();
+    },
+  });
 
   constructor(private readonly ctx: vscode.ExtensionContext) {
     // CLAUDE_SWITCH_ROOT: used by the sandbox launch config (and handy for tests).
@@ -87,7 +103,9 @@ class Controller implements TreeHost, vscode.Disposable {
   }
 
   dispose(): void {
-    if (this.autoTimer) clearInterval(this.autoTimer);
+    this.disposed = true;
+    if (this.autoTimer) clearTimeout(this.autoTimer);
+    this.quota.dispose();
     for (const stop of [...this.loginWatches.values()]) stop();
     for (const d of this.disposables) d.dispose();
   }
@@ -325,32 +343,94 @@ class Controller implements TreeHost, vscode.Disposable {
     }
   }
 
+  /** Loads stored quota; keeps whatever is newer, so a check done in another window shows up here too. */
   private restoreUsage(): void {
     const map = this.ctx.globalState.get<Record<string, cli.UsageInfo>>(USAGE_KEY) ?? {};
     for (const p of this.store.all()) {
       const u = map[p.configDir];
-      if (u && Array.isArray(u.limits)) this.stateOf(p.id).usage = u;
+      if (!u || !Array.isArray(u.limits)) continue;
+      const st = this.stateOf(p.id);
+      if (!st.usage || u.fetchedAt > st.usage.fetchedAt) st.usage = u;
     }
   }
 
   private saveUsage(): void {
+    const stored = this.ctx.globalState.get<Record<string, cli.UsageInfo>>(USAGE_KEY) ?? {};
     const map: Record<string, cli.UsageInfo> = {};
     for (const p of this.store.all()) {
-      const u = this.states.get(p.id)?.usage;
-      if (u) map[p.configDir] = { ...u, raw: u.raw?.slice(0, 20_000) };
+      const mine = this.states.get(p.id)?.usage;
+      if (!mine) continue;
+      const theirs = stored[p.configDir];
+      const u = theirs && Array.isArray(theirs.limits) && theirs.fetchedAt > mine.fetchedAt ? theirs : mine;
+      map[p.configDir] = { ...u, raw: u.raw?.slice(0, 20_000) };
     }
     void this.ctx.globalState.update(USAGE_KEY, map);
   }
 
-  private scheduleAutoQuota(): void {
-    if (this.autoTimer) clearInterval(this.autoTimer);
+  // ───────────────────────── background quota scan ─────────────────────────
+
+  private autoQuotaIntervalMs(): number {
+    return cfg().get<number>('quotaAutoRefreshMinutes', 5) * 60_000;
+  }
+
+  private autoQuotaEnabled(): boolean {
+    return cfg().get<boolean>('quotaAutoRefresh', true) && this.autoQuotaIntervalMs() > 0;
+  }
+
+  private newestUsageAt(): number {
+    let t = 0;
+    for (const p of this.store.all()) t = Math.max(t, this.states.get(p.id)?.usage?.fetchedAt ?? 0);
+    return t;
+  }
+
+  /**
+   * (Re)arms the scan timer. Without `delayMs` the next scan is one interval after the last one
+   * (or after the newest stored quota, right after start-up), at least AUTO_QUOTA_MIN_DELAY_MS away.
+   */
+  private scheduleAutoQuota(delayMs?: number): void {
+    if (this.autoTimer) clearTimeout(this.autoTimer);
     this.autoTimer = undefined;
-    const minutes = cfg().get<number>('quotaAutoRefreshMinutes', 0);
-    if (minutes > 0) {
-      this.autoTimer = setInterval(() => {
-        if (vscode.window.state.focused) void this.checkAllQuota(true);
-      }, Math.max(1, minutes) * 60_000);
+    if (this.disposed) return;
+    if (!this.autoQuotaEnabled()) {
+      this.quota.clear((quiet) => quiet); // a background scan still waiting in the queue stops here
+      return;
     }
+    const interval = Math.max(60_000, this.autoQuotaIntervalMs());
+    const last = this.lastAutoScanAt || this.newestUsageAt();
+    const ms = delayMs ?? Math.min(interval, Math.max(AUTO_QUOTA_MIN_DELAY_MS, last + interval - Date.now()));
+    this.autoTimer = setTimeout(() => void this.autoQuotaTick(), ms);
+  }
+
+  /** One pass over every logged-in account, through the queue. Only the focused window scans. */
+  private async autoQuotaTick(): Promise<void> {
+    this.autoTimer = undefined;
+    if (this.disposed || !this.autoQuotaEnabled()) return;
+    if (!vscode.window.state.focused || !this.bin()) {
+      this.scheduleAutoQuota(AUTO_QUOTA_RETRY_MS);
+      return;
+    }
+    this.restoreUsage(); // another window may have scanned meanwhile
+    // Skip what was checked after our previous scan (other window, manual check, Claude Code's
+    // cache) and is still younger than half an interval. Our own previous pass never counts.
+    const fresh = Math.max(this.lastAutoScanEndAt, Date.now() - this.autoQuotaIntervalMs() / 2);
+    const targets = this.store.all().filter((p) => {
+      const st = this.stateOf(p.id);
+      return isLoggedIn(st) && (st.usage?.fetchedAt ?? 0) <= fresh;
+    });
+    this.lastAutoScanAt = Date.now();
+    this.log.appendLine(`[usage] auto scan: ${targets.length ? targets.map((p) => p.name).join(', ') : 'everything is fresh'}`);
+    try {
+      if (targets.length) await this.quota.enqueue(this.activeFirst(targets).map((p) => p.id), { quiet: true });
+    } finally {
+      this.lastAutoScanEndAt = Date.now();
+      this.scheduleAutoQuota();
+    }
+  }
+
+  /** The account in use first: its quota matters most. */
+  private activeFirst(list: Profile[]): Profile[] {
+    const activeId = this.store.active.id;
+    return [...list].sort((a, b) => Number(b.id === activeId) - Number(a.id === activeId));
   }
 
   private watch(): void {
@@ -381,7 +461,10 @@ class Controller implements TreeHost, vscode.Disposable {
           void this.applyActive();
         }
         if (e.affectsConfiguration('claudeSwitch.showStatusBar')) this.updateStatus();
-        if (e.affectsConfiguration('claudeSwitch.quotaAutoRefreshMinutes')) this.scheduleAutoQuota();
+        if (['quotaAutoRefresh', 'quotaAutoRefreshMinutes'].some((k) => e.affectsConfiguration(`claudeSwitch.${k}`))) {
+          this.lastAutoScanAt = 0;
+          this.scheduleAutoQuota();
+        }
         if (e.affectsConfiguration('claudeSwitch.shareData') || e.affectsConfiguration('claudeSwitch.shareExclude')) {
           void this.refreshAll();
         }
@@ -393,8 +476,10 @@ class Controller implements TreeHost, vscode.Disposable {
       vscode.window.onDidChangeWindowState((s) => {
         if (!s.focused) return;
         if (this.binCache === null) void this.redetectCli(false); // installed while we were away?
+        this.restoreUsage();
         for (const p of this.store.all()) this.readLocal(p, this.stateOf(p.id));
         this.render();
+        if (this.autoTimer) this.scheduleAutoQuota(); // overdue while unfocused → scan soon
       }),
     );
   }
@@ -908,18 +993,40 @@ class Controller implements TreeHost, vscode.Disposable {
     }
   }
 
-  private async checkQuota(p: Profile, quiet: boolean): Promise<void> {
+  /** Queues `/usage` for one account. A manual check jumps ahead of a background scan. */
+  private checkQuota(p: Profile, quiet: boolean): Promise<void> {
+    const bin = quiet ? this.bin() : this.requireBin();
+    if (!bin) return Promise.resolve();
+    return this.quota.enqueue([p.id], { front: !quiet, quiet });
+  }
+
+  private async checkAllQuota(quiet: boolean): Promise<void> {
+    const targets = this.store.all().filter((p) => isLoggedIn(this.stateOf(p.id)));
+    if (!targets.length) {
+      if (!quiet) void vscode.window.showInformationMessage('No logged-in Claude account to check.');
+      return;
+    }
     const bin = quiet ? this.bin() : this.requireBin();
     if (!bin) return;
+    await this.quota.enqueue(this.activeFirst(targets).map((p) => p.id), { quiet });
+  }
+
+  /** Runs `/usage` for one account. Only the queue calls this. */
+  private async runUsage(id: string, quiet: boolean): Promise<void> {
+    const p = this.store.get(id);
+    const bin = this.bin();
+    if (!p || !bin || this.disposed) return;
     const st = this.stateOf(p.id);
-    if (st.busy === 'usage') return;
+    if (st.busy || !isLoggedIn(st)) return; // logged out or logging out while it waited in the queue
     st.busy = 'usage';
     st.usageError = undefined;
     this.render();
     try {
-      await vscode.window.withProgress({ location: { viewId: this.visibleViewId() } }, async () => {
+      const fetch = async () => {
         st.usage = await cli.fetchUsage(bin, p);
-      });
+      };
+      if (quiet) await fetch();
+      else await vscode.window.withProgress({ location: { viewId: this.visibleViewId() } }, fetch);
       st.meta = cli.readAccountMeta(p);
       this.saveUsage();
     } catch (e) {
@@ -929,16 +1036,6 @@ class Controller implements TreeHost, vscode.Disposable {
       st.busy = undefined;
       this.render();
     }
-  }
-
-  private async checkAllQuota(quiet: boolean): Promise<void> {
-    const targets = this.store.all().filter((p) => isLoggedIn(this.stateOf(p.id)));
-    if (!targets.length) {
-      if (!quiet) void vscode.window.showInformationMessage('No logged-in Claude account to check.');
-      return;
-    }
-    if (!quiet && !this.requireBin()) return;
-    await Promise.all(targets.map((p) => this.checkQuota(p, true)));
   }
 
   private async showUsageDetails(p: Profile): Promise<void> {
