@@ -2,7 +2,7 @@
   "name": "claude-account-switch",
   "displayName": "Claude Account Switch",
   "description": "Unofficial. Log in, switch and check quota of several Claude Code accounts from the sidebar, while sessions and memory stay shared.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "p10node",
   "license": "MIT",
   "icon": "media/icon.png",

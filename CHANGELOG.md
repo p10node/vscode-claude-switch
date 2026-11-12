@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - Background quota scan: every logged-in account is re-checked every 5 minutes (`claudeSwitch.quotaAutoRefreshMinutes`), active account first. `claudeSwitch.quotaAutoRefresh` turns it off.
 - All quota checks go through one queue: one `/usage` at a time with a pause in between (`claudeSwitch.quotaCheckSpacingSeconds`, default 10 s) to stay clear of rate limits. A manual check jumps ahead. Queued accounts show a clock icon.
