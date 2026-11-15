@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 - Sort accounts by weekly reset, soonest first: **Sort by Weekly Reset** in the panel's `…` menu, or `claudeSwitch.sortBy: weeklyReset`. Accounts without a known weekly reset come last; the account in use stays on top of the list.
 
