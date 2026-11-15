@@ -7,6 +7,7 @@ import { Activator, CLAUDE_CODE_EXTENSION_ID, claudeCodeConfigDir } from './acti
 import { CARDS_VIEW_ID, CardsViewProvider } from './cardsView';
 import * as cli from './claude';
 import { removeLinks, seedGlobalConfig, syncLinks, unifyWithShared } from './links';
+import { sortByWeeklyReset, weeklyResetAt } from './model';
 import { SpacedQueue } from './queue';
 import { claudeCodeChats } from './sessions';
 import { DEFAULT_CONFIG_DIR, DEFAULT_ID, Profile, ProfileStore } from './store';
@@ -119,6 +120,15 @@ class Controller implements TreeHost, vscode.Disposable {
       this.states.set(id, st);
     }
     return st;
+  }
+
+  profiles(): Profile[] {
+    const all = this.store.all();
+    if (cfg().get<string>('sortBy', 'added') !== 'weeklyReset') return all;
+    return sortByWeeklyReset(all, (p) => {
+      const u = this.states.get(p.id)?.usage;
+      return u ? weeklyResetAt(u.limits, u.fetchedAt) : undefined;
+    });
   }
 
   shareEnabled(): boolean {
@@ -461,7 +471,7 @@ class Controller implements TreeHost, vscode.Disposable {
           void this.applyActive();
         }
         if (e.affectsConfiguration('claudeSwitch.showStatusBar')) this.updateStatus();
-        if (e.affectsConfiguration('claudeSwitch.resetDisplay')) this.render();
+        if (['resetDisplay', 'sortBy'].some((k) => e.affectsConfiguration(`claudeSwitch.${k}`))) this.render();
         if (['quotaAutoRefresh', 'quotaAutoRefreshMinutes'].some((k) => e.affectsConfiguration(`claudeSwitch.${k}`))) {
           this.lastAutoScanAt = 0;
           this.scheduleAutoQuota();
@@ -497,8 +507,7 @@ class Controller implements TreeHost, vscode.Disposable {
 
   private async pick(placeHolder: string, filter: (p: Profile) => boolean = () => true): Promise<Profile | undefined> {
     const activeId = this.store.active.id;
-    const items = this.store
-      .all()
+    const items = this.profiles()
       .filter(filter)
       .map((p) => {
         const st = this.stateOf(p.id);
@@ -641,6 +650,8 @@ class Controller implements TreeHost, vscode.Disposable {
     reg('claudeSwitch.installCli', () => this.installCli());
     reg('claudeSwitch.useTreeView', () => cfg().update('viewStyle', 'tree', vscode.ConfigurationTarget.Global));
     reg('claudeSwitch.useCardView', () => cfg().update('viewStyle', 'cards', vscode.ConfigurationTarget.Global));
+    reg('claudeSwitch.sortByWeeklyReset', () => cfg().update('sortBy', 'weeklyReset', vscode.ConfigurationTarget.Global));
+    reg('claudeSwitch.sortByAdded', () => cfg().update('sortBy', 'added', vscode.ConfigurationTarget.Global));
   }
 
   private async refreshCommand(): Promise<void> {

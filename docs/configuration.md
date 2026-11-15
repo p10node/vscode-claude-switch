@@ -18,6 +18,7 @@
 | `claudeSwitch.quotaAutoRefreshMinutes`  | `5`                | Minutes between two background scans                                                 |
 | `claudeSwitch.quotaCheckSpacingSeconds` | `10`               | Pause between two `/usage` runs (queue)                                              |
 | `claudeSwitch.resetDisplay`             | `weekly`           | Reset at the end of a row: `weekly` (date) or `session` (5-hour window, time)        |
+| `claudeSwitch.sortBy`                   | `added`            | Account order: `added`, or `weeklyReset` (soonest weekly reset first)                |
 | `claudeSwitch.showStatusBar`            | `true`             | Show the active account and its usage in the status bar                              |
 
 ## Views
@@ -26,6 +27,8 @@
 - **Tree**: a native tree; expand an account to see its details. Actions are in the inline buttons and the right-click menu.
 
 To change the view, use **Show as Tree** or **Show as Cards** (the list) in the panel's `…` menu, or set `claudeSwitch.viewStyle`.
+
+Accounts are listed in the order they were added. **Sort by Weekly Reset** in the same menu (or `claudeSwitch.sortBy`) puts the account whose weekly limit resets soonest first; accounts without a known weekly reset come last. **Sort by Order Added** switches back.
 
 ## Shell integration
 

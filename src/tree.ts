@@ -40,6 +40,8 @@ export type { CliHealth };
 
 export interface TreeHost {
   readonly store: ProfileStore;
+  /** Accounts in display order (`claudeSwitch.sortBy`). */
+  profiles(): Profile[];
   stateOf(id: string): ProfileState;
   shareEnabled(): boolean;
   cliHealth(): CliHealth;
@@ -124,7 +126,7 @@ export class AccountsTree implements vscode.TreeDataProvider<TreeNode> {
   getChildren(el?: TreeNode): TreeNode[] {
     if (!el) {
       const notice = this.notice();
-      const profiles: TreeNode[] = this.host.store.all().map((profile) => ({ kind: 'profile', profile }));
+      const profiles: TreeNode[] = this.host.profiles().map((profile) => ({ kind: 'profile', profile }));
       return notice ? [notice, ...profiles] : profiles;
     }
     if (el.kind === 'profile') return this.details(el.profile);

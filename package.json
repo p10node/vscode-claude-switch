@@ -198,6 +198,16 @@
         "title": "Show as Cards",
         "category": "Claude Switch",
         "icon": "$(preview)"
+      },
+      {
+        "command": "claudeSwitch.sortByWeeklyReset",
+        "title": "Sort by Weekly Reset",
+        "category": "Claude Switch"
+      },
+      {
+        "command": "claudeSwitch.sortByAdded",
+        "title": "Sort by Order Added",
+        "category": "Claude Switch"
       }
     ],
     "menus": {
@@ -241,6 +251,16 @@
           "command": "claudeSwitch.useCardView",
           "when": "view == claudeSwitch.accounts",
           "group": "3_view@1"
+        },
+        {
+          "command": "claudeSwitch.sortByWeeklyReset",
+          "when": "view =~ /^claudeSwitch\\.(accounts|cards)$/ && config.claudeSwitch.sortBy != 'weeklyReset'",
+          "group": "3_view@2"
+        },
+        {
+          "command": "claudeSwitch.sortByAdded",
+          "when": "view =~ /^claudeSwitch\\.(accounts|cards)$/ && config.claudeSwitch.sortBy == 'weeklyReset'",
+          "group": "3_view@2"
         }
       ],
       "view/item/context": [
@@ -383,6 +403,14 @@
         {
           "command": "claudeSwitch.useCardView",
           "when": "config.claudeSwitch.viewStyle == 'tree'"
+        },
+        {
+          "command": "claudeSwitch.sortByWeeklyReset",
+          "when": "config.claudeSwitch.sortBy != 'weeklyReset'"
+        },
+        {
+          "command": "claudeSwitch.sortByAdded",
+          "when": "config.claudeSwitch.sortBy == 'weeklyReset'"
         }
       ]
     },
@@ -500,6 +528,19 @@
           ],
           "default": "weekly",
           "markdownDescription": "Which reset the end of each account row shows in the list. An account without that kind of limit shows the other one. The details under a row always list every limit."
+        },
+        "claudeSwitch.sortBy": {
+          "type": "string",
+          "enum": [
+            "added",
+            "weeklyReset"
+          ],
+          "enumDescriptions": [
+            "The order the accounts were added, with the default `~/.claude` first.",
+            "Soonest weekly reset first. Accounts whose weekly reset is not known come last."
+          ],
+          "default": "added",
+          "markdownDescription": "Order of the accounts in the panel and in the account pickers. In the list, the account in use always stays on top."
         },
         "claudeSwitch.showStatusBar": {
           "type": "boolean",

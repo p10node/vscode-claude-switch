@@ -6,7 +6,7 @@ import * as path from 'path';
 import { test } from 'bun:test';
 import { keychainService, parseAuthStatus, parseCachedUsage, parseUsageText } from '../src/claude';
 import { syncLinks, unifyWithShared, removeLinks } from '../src/links';
-import { limitKind, rowReset } from '../src/model';
+import { limitKind, parseResetText, resetTime, rowReset, sortByWeeklyReset, weeklyResetAt } from '../src/model';
 import { SpacedQueue } from '../src/queue';
 import { ProfileStore } from '../src/store';
 import { canonicalDir, slugify } from '../src/util';
@@ -50,6 +50,7 @@ test('parseCachedUsage handles limits array and account mismatch', () => {
     ['Current week (all models)', 95],
     ['Current week (Fable)', 100],
   ]);
+  assert.strictEqual(u.limits[0].resetsAt, Date.parse('2026-11-12T05:00:00Z'));
   assert.strictEqual(parseCachedUsage(cache, 'someone-else'), undefined);
   const legacy = parseCachedUsage({ fetchedAtMs: 1, utilization: { five_hour: { utilization: 40.4 }, seven_day: null } });
   assert.deepStrictEqual(legacy?.limits.map((l) => [l.label, l.percent]), [['Current session', 40]]);
@@ -238,6 +239,44 @@ test('rowReset: weekly date by default, session time on demand, other kind only 
   // Weekly reset unknown: never pass the session reset off as the weekly one.
   assert.strictEqual(rowReset([{ label: 'Current session', percent: 5, resets: '5pm' }, { label: 'Current week (all models)', percent: 0 }], 'weekly'), undefined);
   assert.strictEqual(rowReset([], 'weekly'), undefined);
+});
+
+test('parseResetText reads reset texts as local time around the fetch time', () => {
+  const at = (y: number, mo: number, d: number, h = 0, mi = 0) => new Date(y, mo, d, h, mi).getTime();
+  const ref = at(2026, 10, 15, 21, 0); // Nov 15, 9pm
+  assert.strictEqual(parseResetText('Nov 19 at 12pm (Asia/Saigon)', ref), at(2026, 10, 19, 12));
+  assert.strictEqual(parseResetText('Nov 12 at 11:59am (Asia/Saigon)', ref), at(2026, 10, 12, 11, 59));
+  assert.strictEqual(parseResetText('Nov 20 at 6:00 PM', ref), at(2026, 10, 20, 18));
+  assert.strictEqual(parseResetText('Nov 16, 1:00 AM', ref), at(2026, 10, 16, 1));
+  assert.strictEqual(parseResetText('Nov 22', ref), at(2026, 10, 22));
+  assert.strictEqual(parseResetText('12am', ref), at(2026, 10, 15, 0));
+  assert.strictEqual(parseResetText('5pm (Asia/Saigon)', ref), at(2026, 10, 15, 17));
+  assert.strictEqual(parseResetText('17:30', ref), at(2026, 10, 15, 17, 30));
+  // Around New Year the year is the one closest to the fetch time.
+  assert.strictEqual(parseResetText('Jan 2 at 9am', at(2026, 11, 29)), at(2027, 0, 2, 9));
+  assert.strictEqual(parseResetText('Dec 30 at 9am', at(2027, 0, 1)), at(2026, 11, 30, 9));
+  for (const junk of ['', 'soon', 'in 3 hours', 'Foo 12 at 5pm', 'Nov 12 at 25pm', '12']) {
+    assert.strictEqual(parseResetText(junk, ref), undefined, junk);
+  }
+});
+
+test('sortByWeeklyReset: soonest weekly reset first, unknown last in their own order', () => {
+  const fetchedAt = new Date(2026, 10, 15, 21, 0).getTime();
+  const exact = new Date(2026, 10, 17, 12, 59).getTime();
+  // The exact time wins over the text; the session reset is never used.
+  assert.strictEqual(resetTime({ label: 'Current week (all models)', percent: 1, resets: 'Nov 30 at 1pm', resetsAt: exact }, fetchedAt), exact);
+  const accounts = [
+    { name: 'default', limits: [{ label: 'Current week (all models)', percent: 36, resets: 'Nov 19 at 12pm (Asia/Saigon)' }] },
+    { name: 'no quota yet', limits: [] },
+    { name: 'team', limits: [{ label: 'Current session', percent: 30, resets: '10pm' }, { label: 'Current week (all models)', percent: 66, resets: 'Nov 17 at 12:59 PM', resetsAt: exact }] },
+    { name: 'session only', limits: [{ label: 'Current session', percent: 3, resets: 'Nov 16 at 1:00 AM' }] },
+    { name: 'fable first', limits: [{ label: 'Current week (all models)', percent: 0 }, { label: 'Current week (Fable)', percent: 0, resets: 'Nov 16 at 3pm' }] },
+    { name: 'same day as default', limits: [{ label: 'Current week (all models)', percent: 5, resets: 'Nov 19 at 12pm (Asia/Saigon)' }] },
+  ];
+  assert.strictEqual(weeklyResetAt(accounts[3].limits, fetchedAt), undefined);
+  const sorted = sortByWeeklyReset(accounts, (a) => weeklyResetAt(a.limits, fetchedAt)).map((a) => a.name);
+  assert.deepStrictEqual(sorted, ['fable first', 'team', 'default', 'same day as default', 'no quota yet', 'session only']);
+  assert.strictEqual(accounts[0].name, 'default'); // input untouched
 });
 
 // ───────────────────────── SpacedQueue ─────────────────────────

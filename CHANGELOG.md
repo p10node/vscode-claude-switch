@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Sort accounts by weekly reset, soonest first: **Sort by Weekly Reset** in the panel's `…` menu, or `claudeSwitch.sortBy: weeklyReset`. Accounts without a known weekly reset come last; the account in use stays on top of the list.
+
 ## 0.2.1
 
 - The reset at the end of each account row is now the weekly one (`resets Nov 19`); before, it was the session reset whenever the account had one. Set `claudeSwitch.resetDisplay` to `session` to get the 5-hour session reset back, shown as a time (`resets 5pm`). Hover it for the full date and time.

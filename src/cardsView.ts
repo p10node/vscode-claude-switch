@@ -8,7 +8,7 @@ export const CARDS_VIEW_ID = 'claudeSwitch.cards';
 
 export function buildCardsState(host: TreeHost): CardsState {
   const activeId = host.store.active.id;
-  const all = host.store.all();
+  const all = host.profiles();
   const share = host.shareEnabled();
   const reset = vscode.workspace.getConfiguration('claudeSwitch').get<string>('resetDisplay', 'weekly');
   return {

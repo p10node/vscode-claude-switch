@@ -27,6 +27,8 @@ export interface UsageLimit {
   label: string;
   percent: number;
   resets?: string;
+  /** Exact reset time (epoch ms), when the source has one (Claude Code's cache). */
+  resetsAt?: number;
 }
 
 export interface UsageInfo {
@@ -215,6 +217,11 @@ function formatReset(iso: unknown): string | undefined {
     : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+function resetEpoch(iso: unknown): number | undefined {
+  const t = typeof iso === 'string' ? Date.parse(iso) : NaN;
+  return Number.isNaN(t) ? undefined : t;
+}
+
 function limitLabel(l: Record<string, unknown>): string {
   const kind = String(l.kind ?? '');
   const group = String(l.group ?? '');
@@ -241,7 +248,7 @@ export function parseCachedUsage(u: unknown, accountUuid?: string): UsageInfo | 
   if (Array.isArray(ut.limits)) {
     for (const l of ut.limits as Record<string, unknown>[]) {
       if (!l || typeof l.percent !== 'number') continue;
-      limits.push({ label: limitLabel(l), percent: Math.round(l.percent), resets: formatReset(l.resets_at) });
+      limits.push({ label: limitLabel(l), percent: Math.round(l.percent), resets: formatReset(l.resets_at), resetsAt: resetEpoch(l.resets_at) });
     }
   } else {
     const legacy: [string, string][] = [
@@ -253,7 +260,7 @@ export function parseCachedUsage(u: unknown, accountUuid?: string): UsageInfo | 
     for (const [key, label] of legacy) {
       const v = ut[key] as { utilization?: unknown; resets_at?: unknown } | null | undefined;
       if (v && typeof v.utilization === 'number') {
-        limits.push({ label, percent: Math.round(v.utilization), resets: formatReset(v.resets_at) });
+        limits.push({ label, percent: Math.round(v.utilization), resets: formatReset(v.resets_at), resetsAt: resetEpoch(v.resets_at) });
       }
     }
   }
