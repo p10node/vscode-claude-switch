@@ -2,6 +2,7 @@
  * Accounts panel, Quick Pick style: a filter box, "in use" / "other accounts" separators,
  * two-line rows, and an inline details panel under the clicked account.
  */
+import { rowReset } from '../model';
 import type { CardCommand, CardLimit, CardProfile, CardsState, CliHealth, FromWebview, ToWebview } from '../model';
 
 interface ViewState {
@@ -134,9 +135,6 @@ function splitLabel(label: string): { name: string; period: string } {
   return { name, period };
 }
 
-/** "Nov 12 at 11:59am (Asia/Saigon)" or "Nov 12, 12:00 PM" → "Nov 12". */
-const shortDate = (s: string): string => s.split(/,| at /)[0].trim();
-
 // ───────────────────────── pieces ─────────────────────────
 
 function statusIcon(p: CardProfile): HTMLElement {
@@ -164,8 +162,8 @@ function summary(p: CardProfile): Child[] {
     if (i) out.push(' · ');
     out.push(`${splitLabel(l.label).name} ${l.percent}%`);
   });
-  const reset = u.limits.find((l) => l.resets)?.resets;
-  if (reset) out.push(` · resets ${shortDate(reset)}`);
+  const reset = rowReset(u.limits, current?.resetDisplay ?? 'weekly');
+  if (reset) out.push(h('span', { text: ` · resets ${reset.text}`, title: `${reset.limit.label} resets ${reset.limit.resets}` }));
   return out;
 }
 

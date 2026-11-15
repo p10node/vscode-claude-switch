@@ -6,6 +6,7 @@ import * as path from 'path';
 import { test } from 'bun:test';
 import { keychainService, parseAuthStatus, parseCachedUsage, parseUsageText } from '../src/claude';
 import { syncLinks, unifyWithShared, removeLinks } from '../src/links';
+import { limitKind, rowReset } from '../src/model';
 import { SpacedQueue } from '../src/queue';
 import { ProfileStore } from '../src/store';
 import { canonicalDir, slugify } from '../src/util';
@@ -206,6 +207,37 @@ test('ProfileStore: pending accounts are confirmed after the first login', () =>
   assert.strictEqual(new ProfileStore(root).get(p.id)?.pending, true);
   s.confirm(p.id);
   assert.strictEqual(new ProfileStore(root).get(p.id)?.pending, false);
+});
+
+test('rowReset: weekly date by default, session time on demand, other kind only as a fallback', () => {
+  const cli = [
+    { label: 'Current session', percent: 30, resets: '5pm (Asia/Saigon)' },
+    { label: 'Current week (all models)', percent: 66, resets: 'Nov 19 at 12pm (Asia/Saigon)' },
+    { label: 'Current week (Fable)', percent: 48 },
+  ];
+  assert.strictEqual(limitKind('Current session'), 'session');
+  assert.strictEqual(limitKind('Current week (Fable)'), 'weekly');
+  assert.strictEqual(limitKind('Extra usage'), undefined);
+  assert.strictEqual(rowReset(cli, 'weekly')?.text, 'Nov 19');
+  assert.strictEqual(rowReset(cli, 'weekly')?.limit.label, 'Current week (all models)');
+  assert.strictEqual(rowReset(cli, 'session')?.text, '5pm');
+
+  // Claude Code's cache format; a session that ends after midnight still shows only the time.
+  const cache = [
+    { label: 'Current session', percent: 3, resets: 'Nov 16, 1:00 AM' },
+    { label: 'Current week (all models)', percent: 0, resets: 'Nov 22, 12:00 PM' },
+  ];
+  assert.strictEqual(rowReset(cache, 'weekly')?.text, 'Nov 22');
+  assert.strictEqual(rowReset(cache, 'session')?.text, '1:00 AM');
+  assert.strictEqual(rowReset([{ label: 'Current week (all models)', percent: 9, resets: '9:59 PM' }], 'weekly')?.text, '9:59 PM');
+
+  // No session limit on this plan → the weekly date; a session that has not started → nothing.
+  const weeklyOnly = [{ label: 'Current week (all models)', percent: 36, resets: 'Nov 19 at 12pm (Asia/Saigon)' }];
+  assert.strictEqual(rowReset(weeklyOnly, 'session')?.text, 'Nov 19');
+  assert.strictEqual(rowReset([{ label: 'Current session', percent: 0 }, ...weeklyOnly], 'session'), undefined);
+  // Weekly reset unknown: never pass the session reset off as the weekly one.
+  assert.strictEqual(rowReset([{ label: 'Current session', percent: 5, resets: '5pm' }, { label: 'Current week (all models)', percent: 0 }], 'weekly'), undefined);
+  assert.strictEqual(rowReset([], 'weekly'), undefined);
 });
 
 // ───────────────────────── SpacedQueue ─────────────────────────

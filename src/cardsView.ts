@@ -10,8 +10,10 @@ export function buildCardsState(host: TreeHost): CardsState {
   const activeId = host.store.active.id;
   const all = host.store.all();
   const share = host.shareEnabled();
+  const reset = vscode.workspace.getConfiguration('claudeSwitch').get<string>('resetDisplay', 'weekly');
   return {
     cli: host.cliHealth(),
+    resetDisplay: reset === 'session' ? 'session' : 'weekly',
     profiles: all.map((p): CardProfile => {
       const st = host.stateOf(p.id);
       const key = keyLocation(p, st);

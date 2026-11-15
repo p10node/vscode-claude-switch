@@ -17,11 +17,12 @@
 | `claudeSwitch.quotaAutoRefresh`         | `true`             | Re-check every account's quota in the background, one at a time                      |
 | `claudeSwitch.quotaAutoRefreshMinutes`  | `5`                | Minutes between two background scans                                                 |
 | `claudeSwitch.quotaCheckSpacingSeconds` | `10`               | Pause between two `/usage` runs (queue)                                              |
+| `claudeSwitch.resetDisplay`             | `weekly`           | Reset at the end of a row: `weekly` (date) or `session` (5-hour window, time)        |
 | `claudeSwitch.showStatusBar`            | `true`             | Show the active account and its usage in the status bar                              |
 
 ## Views
 
-- **List** (default, `cards`): a filter box and one two-line row per account (email, quota, reset date). Click a row or press Enter to show its usage bars, folder, key and a row of action icons. ↑ ↓ move between rows; Esc clears the filter.
+- **List** (default, `cards`): a filter box and one two-line row per account (email, quota, weekly reset date; `claudeSwitch.resetDisplay` switches it to the 5-hour session reset). Click a row or press Enter to show its usage bars, folder, key and a row of action icons. ↑ ↓ move between rows; Esc clears the filter.
 - **Tree**: a native tree; expand an account to see its details. Actions are in the inline buttons and the right-click menu.
 
 To change the view, use **Show as Tree** or **Show as Cards** (the list) in the panel's `…` menu, or set `claudeSwitch.viewStyle`.

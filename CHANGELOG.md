@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- The reset at the end of each account row is now the weekly one (`resets Nov 19`); before, it was the session reset whenever the account had one. Set `claudeSwitch.resetDisplay` to `session` to get the 5-hour session reset back, shown as a time (`resets 5pm`). Hover it for the full date and time.
+- Fix: a newly added account could keep the name “New account” after login. It now takes its email as soon as the login is detected.
+
 ## 0.2.0
 
 - Background quota scan: every logged-in account is re-checked every 5 minutes (`claudeSwitch.quotaAutoRefreshMinutes`), active account first. `claudeSwitch.quotaAutoRefresh` turns it off.

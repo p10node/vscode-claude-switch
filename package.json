@@ -488,6 +488,19 @@
           "minimum": 0,
           "markdownDescription": "Pause between two `/usage` runs. Quota checks are queued and run one account at a time, with this gap, so several accounts do not hit the API at once."
         },
+        "claudeSwitch.resetDisplay": {
+          "type": "string",
+          "enum": [
+            "weekly",
+            "session"
+          ],
+          "enumDescriptions": [
+            "When the weekly limit resets, as a date (e.g. `resets Nov 19`).",
+            "When the current 5-hour session resets, as a time (e.g. `resets 5pm`)."
+          ],
+          "default": "weekly",
+          "markdownDescription": "Which reset the end of each account row shows in the list. An account without that kind of limit shows the other one. The details under a row always list every limit."
+        },
         "claudeSwitch.showStatusBar": {
           "type": "boolean",
           "default": true,

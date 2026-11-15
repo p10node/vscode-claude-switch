@@ -461,6 +461,7 @@ class Controller implements TreeHost, vscode.Disposable {
           void this.applyActive();
         }
         if (e.affectsConfiguration('claudeSwitch.showStatusBar')) this.updateStatus();
+        if (e.affectsConfiguration('claudeSwitch.resetDisplay')) this.render();
         if (['quotaAutoRefresh', 'quotaAutoRefreshMinutes'].some((k) => e.affectsConfiguration(`claudeSwitch.${k}`))) {
           this.lastAutoScanAt = 0;
           this.scheduleAutoQuota();
@@ -899,6 +900,8 @@ class Controller implements TreeHost, vscode.Disposable {
           st.auth = now;
           st.usage = undefined;
           st.usageError = undefined;
+          // Name it right away: the full refresh below runs more CLI calls and can take a while.
+          this.applyAutoName(p, st);
           stop();
           await this.onLoggedIn(p, term);
         } else if (final || Date.now() - started > LOGIN_TIMEOUT_MS) {
@@ -1028,6 +1031,7 @@ class Controller implements TreeHost, vscode.Disposable {
       if (quiet) await fetch();
       else await vscode.window.withProgress({ location: { viewId: this.visibleViewId() } }, fetch);
       st.meta = cli.readAccountMeta(p);
+      this.applyAutoName(p, st); // an email that was not known at login shows up here
       this.saveUsage();
     } catch (e) {
       st.usageError = errorText(e);
