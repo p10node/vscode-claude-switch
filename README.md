@@ -1,5 +1,12 @@
 # Claude Account Switch
 
+[![Version](https://vsmarketplacebadges.dev/version-short/p10node.claude-account-switch.svg?label=VS%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=p10node.claude-account-switch)
+[![Installs](https://vsmarketplacebadges.dev/installs-short/p10node.claude-account-switch.svg)](https://marketplace.visualstudio.com/items?itemName=p10node.claude-account-switch)
+[![VS Marketplace downloads](https://vsmarketplacebadges.dev/downloads-short/p10node.claude-account-switch.svg?label=downloads)](https://marketplace.visualstudio.com/items?itemName=p10node.claude-account-switch)
+[![Open VSX downloads](https://img.shields.io/open-vsx/dt/p10node/claude-account-switch?label=Open%20VSX)](https://open-vsx.org/extension/p10node/claude-account-switch)
+[![Build](https://img.shields.io/github/actions/workflow/status/p10node/vscode-claude-switch/publish.yml)](https://github.com/p10node/vscode-claude-switch/actions/workflows/publish.yml)
+[![License](https://img.shields.io/github/license/p10node/vscode-claude-switch)](LICENSE)
+
 **Log in once, switch any time.** No more signing in again in the browser every time you change Claude accounts.
 
 Switch between Claude Code accounts from the VS Code sidebar, and keep the same sessions and memory whichever account is active.
