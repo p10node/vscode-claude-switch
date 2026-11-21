@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1
 
 - Fix: the plan (Pro, Team, …) was missing from the row of an account whose name differs from its email. The row now shows name, email and plan.
 
