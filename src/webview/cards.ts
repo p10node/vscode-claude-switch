@@ -308,7 +308,12 @@ function row(p: CardProfile): HTMLElement[] {
         'div',
         { class: 'qp-l1' },
         h('span', { class: 'qp-name', text: p.name }),
-        h('span', { class: 'qp-desc', text: !p.loggedIn ? 'not logged in' : p.email && p.email !== p.name ? p.email : (p.plan ?? '') }),
+        !p.loggedIn
+          ? h('span', { class: 'qp-desc', text: 'not logged in' })
+          : p.email && p.email !== p.name
+            ? h('span', { class: 'qp-desc', text: p.email })
+            : null,
+        p.loggedIn && p.plan ? h('span', { class: 'qp-desc qp-plan', text: p.plan }) : null,
       ),
       h('div', { class: 'qp-l2' }, ...summary(p)),
     ),

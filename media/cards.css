@@ -175,6 +175,10 @@ button {
   opacity: 0.75;
 }
 
+.qp-plan {
+  flex: none;
+}
+
 .qp-l2 {
   overflow: hidden;
   text-overflow: ellipsis;

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix: the plan (Pro, Team, …) was missing from the row of an account whose name differs from its email. The row now shows name, email and plan.
+
 ## 0.3.0
 
 - Sort accounts by weekly reset, soonest first: **Sort by Weekly Reset** in the panel's `…` menu, or `claudeSwitch.sortBy: weeklyReset`. Accounts without a known weekly reset come last; the account in use stays on top of the list.
