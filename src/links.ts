@@ -16,6 +16,13 @@ const BACKUP_DIR = '.claude-switch-backup';
 /** Never shared, whatever the settings say: these hold the login of one account. */
 export const ALWAYS_SEPARATE = ['.credentials.json', '.claude.json', 'backups', BACKUP_DIR];
 
+/**
+ * Locks and temp files (`.oauth_refresh.lock`, `x.lock.owner`, `settings.json.tmp.123`) live only
+ * while one process works. A link to one outlives it and keeps the name taken in the account
+ * folder: Claude Code can then never take its own lock there, e.g. to refresh the login token.
+ */
+export const isTransient = (name: string): boolean => /\.(lock|tmp)(\.|$)/i.test(name);
+
 /** Created in ~/.claude up front so Claude never creates them inside an account folder first. */
 const PRECREATE_DIRS = [
   'projects', // session transcripts + auto memory (projects/<project>/memory)
@@ -54,6 +61,8 @@ export interface LinkReport {
   conflicts: string[];
   /** Entries of ~/.claude missing in the account folder (only when not creating). */
   missing: string[];
+  /** Broken links of ours that were removed (see `pruneLinks`). */
+  pruned: string[];
   errors: string[];
 }
 
@@ -77,21 +86,68 @@ export function ensureSharedRoot(sharedRoot = DEFAULT_CONFIG_DIR): void {
   }
 }
 
+/** A link made by `syncLinks`: it points to the entry of the same name directly inside `sharedRoot`. */
+function isOurLink(dst: string, name: string, sharedRoot: string): boolean {
+  try {
+    const target = path.resolve(path.dirname(dst), fs.readlinkSync(dst));
+    return path.basename(target) === name && path.dirname(target) === path.resolve(sharedRoot);
+  } catch {
+    return false;
+  }
+}
+
+/** The link's target does not exist (an unreadable target is not "gone"). */
+function targetGone(link: string): boolean {
+  try {
+    fs.statSync(link);
+    return false;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'ENOENT';
+  }
+}
+
+/**
+ * Remove links of ours that only do harm: links to a lock or temp file, and links whose entry is
+ * gone from `sharedRoot`. Unlinks symlinks only, so no data is ever touched.
+ */
+function pruneLinks(profileDir: string, sharedRoot: string): string[] {
+  const pruned: string[] = [];
+  let names: string[] = [];
+  try {
+    names = fs.readdirSync(profileDir);
+  } catch {
+    return pruned;
+  }
+  for (const name of names.sort()) {
+    const dst = path.join(profileDir, name);
+    try {
+      if (!fs.lstatSync(dst).isSymbolicLink() || !isOurLink(dst, name, sharedRoot)) continue;
+      if (!isTransient(name) && !targetGone(dst)) continue;
+      fs.unlinkSync(dst);
+      pruned.push(name);
+    } catch {
+      /* ignore */
+    }
+  }
+  return pruned;
+}
+
 /**
  * Make every shareable entry of `sharedRoot` a symlink inside `profileDir`.
- * Only ever *adds* links where nothing exists; never moves or deletes anything.
+ * Adds links where nothing exists and removes broken links of its own; never moves or deletes data.
  */
 export function syncLinks(profileDir: string, exclude: string[], create: boolean, sharedRoot = DEFAULT_CONFIG_DIR): LinkReport {
-  const report: LinkReport = { linked: [], conflicts: [], missing: [], errors: [] };
+  const report: LinkReport = { linked: [], conflicts: [], missing: [], pruned: [], errors: [] };
   if (sameTarget(profileDir, sharedRoot)) return report;
   try {
     if (create) {
       ensureSharedRoot(sharedRoot);
       fs.mkdirSync(profileDir, { recursive: true, mode: 0o700 });
+      report.pruned = pruneLinks(profileDir, sharedRoot);
     }
     const skip = new Set([...ALWAYS_SEPARATE, ...exclude]);
     for (const name of fs.readdirSync(sharedRoot).sort()) {
-      if (skip.has(name)) continue;
+      if (skip.has(name) || isTransient(name)) continue;
       const src = path.join(sharedRoot, name);
       const dst = path.join(profileDir, name);
       let st: fs.Stats | undefined;
@@ -138,7 +194,7 @@ export function unifyWithShared(profileDir: string, names: string[], sharedRoot 
   const backupDir = path.join(profileDir, BACKUP_DIR, stamp);
   const result: UnifyResult = { unified: [], backupDir, errors: [] };
   for (const name of names) {
-    if (ALWAYS_SEPARATE.includes(name)) continue;
+    if (ALWAYS_SEPARATE.includes(name) || isTransient(name)) continue;
     const dst = path.join(profileDir, name);
     const src = path.join(sharedRoot, name);
     try {

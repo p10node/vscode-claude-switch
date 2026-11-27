@@ -298,13 +298,22 @@ export async function fetchUsage(bin: string, p: Profile): Promise<UsageInfo> {
   const raw = stripAnsi([r.stdout, r.stderr].filter(Boolean).join('\n')).trim();
   const limits = parseUsageText(raw);
   if (!limits.length) {
-    // Output format changed? Claude Code refreshes its own cache while running /usage.
+    // Claude Code writes its own cache whenever its usage request succeeds: a cache from this run
+    // is the answer, even without any limit (or when the printed format changed).
     const cached = readAccountMeta(p)?.cachedUsage;
-    if (cached && cached.fetchedAt >= started - 5_000 && cached.limits.length) return { ...cached, raw };
+    if (cached && cached.fetchedAt >= started - 5_000) return { ...cached, raw };
     if (r.code !== 0) throw new Error(raw.split(/\r?\n/)[0] || `claude exited with code ${r.code}`);
+    // /usage still exits 0 and just leaves the limits out when that request fails.
+    if (cached || usesSubscription(raw)) throw new Error(USAGE_REQUEST_FAILED);
   }
   return { fetchedAt: Date.now(), limits, raw, source: 'cli' };
 }
+
+export const USAGE_REQUEST_FAILED =
+  'Claude Code printed no limits: its usage request failed (login expired, rate limit or no network). Try again, or log in again.';
+
+/** First line of `/usage` for a Pro/Max/Team login (an API key prints a cost summary instead). */
+export const usesSubscription = (raw: string): boolean => /\busing your subscription\b/i.test(raw);
 
 export function logout(bin: string, p: Profile): Promise<ExecResult> {
   return run(bin, ['auth', 'logout'], profileEnv(p), 30_000);

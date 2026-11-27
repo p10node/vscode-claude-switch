@@ -4,11 +4,11 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { test } from 'bun:test';
-import { keychainService, parseAuthStatus, parseCachedUsage, parseUsageText } from '../src/claude';
-import { syncLinks, unifyWithShared, removeLinks } from '../src/links';
+import { fetchUsage, keychainService, parseAuthStatus, parseCachedUsage, parseUsageText, USAGE_REQUEST_FAILED } from '../src/claude';
+import { isTransient, syncLinks, unifyWithShared, removeLinks } from '../src/links';
 import { limitKind, parseResetText, resetTime, rowReset, sortByWeeklyReset, weeklyResetAt } from '../src/model';
 import { SpacedQueue } from '../src/queue';
-import { ProfileStore } from '../src/store';
+import { Profile, ProfileStore } from '../src/store';
 import { canonicalDir, slugify } from '../src/util';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'claude-switch-test-'));
@@ -97,6 +97,77 @@ test('syncLinks shares everything except login data and never overwrites', () =>
   const again = syncLinks(prof, ['telemetry'], true, shared);
   assert.deepStrictEqual(again.conflicts, ['skills']);
   assert.strictEqual(again.errors.length, 0);
+});
+
+test('syncLinks never links locks or temp files and removes its broken links', () => {
+  for (const n of ['.oauth_refresh.lock', '.oauth_refresh.lock.owner', 'history.jsonl.lock', 'settings.json.tmp.4242']) assert.ok(isTransient(n), n);
+  for (const n of ['settings.json', 'history.jsonl', 'plugins', 'blocklist.json', 'tmp']) assert.ok(!isTransient(n), n);
+
+  const shared = tmp();
+  const prof = tmp();
+  fs.mkdirSync(path.join(shared, '.oauth_refresh.lock')); // a token refresh is running in ~/.claude
+  fs.writeFileSync(path.join(shared, '.oauth_refresh.lock.owner'), '{}');
+  fs.writeFileSync(path.join(shared, 'settings.json.tmp.4242'), '{}');
+  fs.writeFileSync(path.join(shared, 'settings.json'), '{}');
+  // left behind by an older version: links to a lock, and to an entry that is gone from ~/.claude
+  fs.symlinkSync(path.join(shared, '.oauth_refresh.lock'), path.join(prof, '.oauth_refresh.lock'));
+  fs.symlinkSync(path.join(shared, '.oauth_refresh.lock.owner'), path.join(prof, '.oauth_refresh.lock.owner'));
+  fs.symlinkSync(path.join(shared, 'gone'), path.join(prof, 'gone'));
+  // not ours: never touched
+  fs.symlinkSync(path.join(prof, 'nowhere'), path.join(prof, 'foreign'));
+  fs.writeFileSync(path.join(prof, 'own.lock'), 'x');
+
+  const r = syncLinks(prof, [], true, shared);
+  assert.deepStrictEqual(r.pruned, ['.oauth_refresh.lock', '.oauth_refresh.lock.owner', 'gone']);
+  assert.deepStrictEqual(r.conflicts, []);
+  assert.ok(r.linked.includes('settings.json'));
+  for (const n of ['.oauth_refresh.lock', '.oauth_refresh.lock.owner', 'settings.json.tmp.4242', 'gone']) {
+    assert.throws(() => fs.lstatSync(path.join(prof, n)), n);
+  }
+  assert.ok(fs.lstatSync(path.join(prof, 'foreign')).isSymbolicLink());
+  assert.strictEqual(fs.readFileSync(path.join(prof, 'own.lock'), 'utf8'), 'x');
+  assert.ok(fs.existsSync(path.join(shared, '.oauth_refresh.lock'))); // the original is untouched
+  fs.mkdirSync(path.join(prof, '.oauth_refresh.lock')); // Claude Code can take its own lock again
+
+  assert.deepStrictEqual(syncLinks(prof, [], true, shared).pruned, []);
+});
+
+test('fetchUsage tells a failed usage request from an account without limits', async () => {
+  const SUBSCRIPTION = 'You are currently using your subscription to power your Claude Code usage';
+  const fake = (script: string): { bin: string; p: Profile } => {
+    const dir = tmp();
+    const bin = path.join(dir, 'claude');
+    fs.writeFileSync(bin, `#!/bin/sh\n${script}\n`, { mode: 0o755 });
+    return { bin, p: { id: 'a', name: 'a', configDir: dir, managed: true, isDefault: false, autoName: false, pending: false } };
+  };
+  const cache = (fetchedAtMs: string, limits: string): string =>
+    `printf '{"cachedUsageUtilization":{"fetchedAtMs":%s,"utilization":{"limits":${limits}}}}' ${fetchedAtMs} > "$CLAUDE_CONFIG_DIR/.claude.json"`;
+  const WEEKLY = '[{"kind":"weekly_all","group":"weekly","percent":42,"resets_at":"2026-12-03T05:00:00Z"}]';
+
+  // limits printed
+  let f = fake(`echo '${SUBSCRIPTION}'; echo; echo 'Current week (all models): 6% used · resets Dec 3 at 12pm (Asia/Saigon)'`);
+  let u = await fetchUsage(f.bin, f.p);
+  assert.deepStrictEqual([u.source, u.limits.map((l) => l.percent)], ['cli', [6]]);
+
+  // usage request failed: exit 0, no limits, Claude Code's cache untouched (absent, or from an earlier run)
+  f = fake(`echo '${SUBSCRIPTION}'; echo; echo "What's contributing to your usage?"`);
+  await assert.rejects(fetchUsage(f.bin, f.p), { message: USAGE_REQUEST_FAILED });
+  f = fake(`${cache('1000', WEEKLY)}; echo 'Usage unavailable'`);
+  await assert.rejects(fetchUsage(f.bin, f.p), { message: USAGE_REQUEST_FAILED });
+
+  // no limits printed, but Claude Code cached this run's answer
+  f = fake(`${cache('"$(date +%s)000"', WEEKLY)}; echo '${SUBSCRIPTION}'`);
+  u = await fetchUsage(f.bin, f.p);
+  assert.deepStrictEqual([u.source, u.limits.map((l) => l.percent)], ['cache', [42]]);
+  f = fake(`${cache('"$(date +%s)000"', '[]')}; echo '${SUBSCRIPTION}'`);
+  assert.deepStrictEqual((await fetchUsage(f.bin, f.p)).limits, []);
+
+  // API key: no subscription, no limits
+  f = fake(`echo 'Total cost:            $0.0000'`);
+  assert.deepStrictEqual((await fetchUsage(f.bin, f.p)).limits, []);
+
+  f = fake(`echo 'Not logged in' >&2; exit 1`);
+  await assert.rejects(fetchUsage(f.bin, f.p), { message: 'Not logged in' });
 });
 
 test('unifyWithShared merges without overwriting and keeps a backup', () => {

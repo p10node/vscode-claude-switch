@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Fix: every account except the one in use could end up showing “No subscription quota reported”. A lock file of Claude Code (`.oauth_refresh.lock`) that existed in `~/.claude` for a moment was linked into the account folders; once it was gone, Claude Code could no longer refresh the login of those accounts, so `/usage` printed no limits. Lock and temp files are no longer linked, and broken links are removed on the next refresh.
+- A `/usage` that comes back without limits because its request failed now shows “Quota check failed” and keeps the last known values, instead of replacing them with “No subscription quota reported”.
+
 ## 0.3.1
 
 - Fix: the plan (Pro, Team, …) was missing from the row of an account whose name differs from its email. The row now shows name, email and plan.

@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { Activator, CLAUDE_CODE_EXTENSION_ID, claudeCodeConfigDir } from './activation';
 import { CARDS_VIEW_ID, CardsViewProvider } from './cardsView';
 import * as cli from './claude';
-import { removeLinks, seedGlobalConfig, syncLinks, unifyWithShared } from './links';
+import { LinkReport, removeLinks, seedGlobalConfig, syncLinks, unifyWithShared } from './links';
 import { sortByWeeklyReset, weeklyResetAt } from './model';
 import { SpacedQueue } from './queue';
 import { claudeCodeChats } from './sessions';
@@ -144,6 +144,13 @@ class Controller implements TreeHost, vscode.Disposable {
     return cfg().get<string[]>('shareExclude', []);
   }
 
+  /** Links an account folder to ~/.claude, and logs the broken links it had to remove. */
+  private syncShared(dir: string): LinkReport {
+    const report = syncLinks(dir, this.shareExclude(), true);
+    if (report.pruned.length) this.log.appendLine(`[links] ${dir}: removed broken link(s) ${report.pruned.join(', ')}`);
+    return report;
+  }
+
   // ───────────────────────── core ─────────────────────────
 
   private bin(): string | undefined {
@@ -274,7 +281,7 @@ class Controller implements TreeHost, vscode.Disposable {
   private async applyActive(): Promise<void> {
     const p = this.store.active;
     if (!p.isDefault && this.shareEnabled() && isDirectory(p.configDir)) {
-      this.stateOf(p.id).links = syncLinks(p.configDir, this.shareExclude(), true);
+      this.stateOf(p.id).links = this.syncShared(p.configDir);
     }
     await this.activator.apply(p);
     this.lastAppliedDir = p.isDefault ? '' : p.configDir;
@@ -321,7 +328,7 @@ class Controller implements TreeHost, vscode.Disposable {
     const st = this.stateOf(p.id);
     st.folderMissing = !p.isDefault && !isDirectory(p.configDir);
     this.readLocal(p, st);
-    st.links = !p.isDefault && !st.folderMissing && this.shareEnabled() ? syncLinks(p.configDir, this.shareExclude(), true) : undefined;
+    st.links = !p.isDefault && !st.folderMissing && this.shareEnabled() ? this.syncShared(p.configDir) : undefined;
     if (process.platform === 'darwin') {
       const service = cli.keychainService(p);
       st.keychain = { service, exists: await cli.keychainHasItem(service) };
@@ -691,7 +698,7 @@ class Controller implements TreeHost, vscode.Disposable {
     const dir = this.store.allocateManagedDir('account');
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     if (cfg().get<boolean>('seedGlobalConfig', true)) seedGlobalConfig(dir);
-    if (this.shareEnabled()) syncLinks(dir, this.shareExclude(), true);
+    if (this.shareEnabled()) this.syncShared(dir);
     const p = this.store.add(this.store.uniqueName('New account'), dir, true, { autoName: true, pending: true });
     this.log.appendLine(`[add] “${p.name}” → ${dir}`);
     this.render();
@@ -1092,7 +1099,7 @@ class Controller implements TreeHost, vscode.Disposable {
       void vscode.window.showInformationMessage('Sharing is disabled (claudeSwitch.shareData).');
       return;
     }
-    const report = syncLinks(p.configDir, this.shareExclude(), true);
+    const report = this.syncShared(p.configDir);
     if (!report.conflicts.length) {
       void vscode.window.showInformationMessage(`“${p.name}” already shares sessions & memory with ~/.claude.`);
       await this.refreshProfile(p);

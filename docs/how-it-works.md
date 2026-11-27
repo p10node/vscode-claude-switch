@@ -48,8 +48,9 @@ Setting `CLAUDE_CONFIG_DIR` alone would give each account a separate copy of eve
 - `.claude.json`: account info and per-account caches. When an account is created, non-login preferences are copied into it once: onboarding state, theme, trusted projects and MCP servers.
 - The key (see below).
 - `backups`, and the entries listed in `claudeSwitch.shareExclude` (telemetry, caches, …).
+- Lock and temp files (`*.lock`, `*.lock.owner`, `*.tmp.*`): they belong to one running process. A link to Claude Code's `.oauth_refresh.lock` would stop it from refreshing the login of that account.
 
-Links are only ever added where nothing exists. If an entry already exists separately in an account folder, the card shows it as **Separate**. **Unify** fixes this:
+Links are only ever added where nothing exists. A link whose entry is gone from `~/.claude` is removed again; nothing else is ever deleted. If an entry already exists separately in an account folder, the card shows it as **Separate**. **Unify** fixes this:
 
 1. Moves the entry to `.claude-switch-backup/<time>/` inside the account folder.
 2. Copies its content into `~/.claude` without overwriting anything. `.jsonl` files are appended; for other files, the `~/.claude` version wins.
@@ -72,6 +73,8 @@ There are two sources:
 
 - **Check quota** runs `claude -p /usage` as that account and reads the lines shown by Claude Code (`Current week (all models): 95% used · resets …`).
 - The usage cache that Claude Code keeps in `.claude.json` while you work. It is read on refresh and when the window gets focus, with no extra request.
+
+When Claude Code cannot load the limits (login expired, rate limit, no network), `/usage` still succeeds and only leaves the limit lines out. Such a run counts as **Quota check failed** and the last known values stay; it is told apart from an account that really has no limits by Claude Code's usage cache, which is only written when the request worked.
 
 Every `/usage` run goes through one queue: accounts are checked one at a time with a pause in between (`claudeSwitch.quotaCheckSpacingSeconds`), so several accounts never hit the API at once. A manual **Check Quota** jumps ahead of the queue.
 
