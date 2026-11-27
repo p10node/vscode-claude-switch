@@ -78,7 +78,7 @@ When Claude Code cannot load the limits (login expired, rate limit, no network),
 
 Every `/usage` run goes through one queue: accounts are checked one at a time with a pause in between (`claudeSwitch.quotaCheckSpacingSeconds`), so several accounts never hit the API at once. A manual **Check Quota** jumps ahead of the queue.
 
-By default a background scan re-checks every logged-in account every 5 minutes (`claudeSwitch.quotaAutoRefreshMinutes`); the account in use goes first. Only the focused window scans, and an account checked less than half an interval ago (for example by another window) is skipped. Turn it off with `claudeSwitch.quotaAutoRefresh`.
+By default a background scan re-checks every logged-in account every 30 minutes (`claudeSwitch.quotaAutoRefreshMinutes`); the account in use goes first. Only the focused window scans, and an account checked less than half an interval ago (for example by another window) is skipped. Turn it off with `claudeSwitch.quotaAutoRefresh`.
 
 ## Why this approach
 

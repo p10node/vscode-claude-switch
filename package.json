@@ -506,7 +506,7 @@
         },
         "claudeSwitch.quotaAutoRefreshMinutes": {
           "type": "number",
-          "default": 5,
+          "default": 30,
           "minimum": 1,
           "markdownDescription": "Minutes between two background quota scans. Only the focused window scans, and accounts checked less than half an interval ago (for example by another window) are skipped."
         },

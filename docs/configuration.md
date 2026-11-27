@@ -15,7 +15,7 @@
 | `claudeSwitch.shareExclude`             | caches, telemetry  | Entries of `~/.claude` that are not shared                                           |
 | `claudeSwitch.seedGlobalConfig`         | `true`             | Copy non-login preferences into new accounts once                                    |
 | `claudeSwitch.quotaAutoRefresh`         | `true`             | Re-check every account's quota in the background, one at a time                      |
-| `claudeSwitch.quotaAutoRefreshMinutes`  | `5`                | Minutes between two background scans                                                 |
+| `claudeSwitch.quotaAutoRefreshMinutes`  | `30`               | Minutes between two background scans                                                 |
 | `claudeSwitch.quotaCheckSpacingSeconds` | `10`               | Pause between two `/usage` runs (queue)                                              |
 | `claudeSwitch.resetDisplay`             | `weekly`           | Reset at the end of a row: `weekly` (date) or `session` (5-hour window, time)        |
 | `claudeSwitch.sortBy`                   | `added`            | Account order: `added`, or `weeklyReset` (soonest weekly reset first)                |

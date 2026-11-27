@@ -387,7 +387,7 @@ class Controller implements TreeHost, vscode.Disposable {
   // ───────────────────────── background quota scan ─────────────────────────
 
   private autoQuotaIntervalMs(): number {
-    return cfg().get<number>('quotaAutoRefreshMinutes', 5) * 60_000;
+    return cfg().get<number>('quotaAutoRefreshMinutes', 30) * 60_000;
   }
 
   private autoQuotaEnabled(): boolean {
