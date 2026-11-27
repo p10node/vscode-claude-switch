@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.2
 
 - The background quota scan now runs every 30 minutes instead of every 5 (`claudeSwitch.quotaAutoRefreshMinutes`). Fewer requests keep clear of the rate limit of Claude's usage API: once hit, it leaves an account without quota for about an hour. A manual **Check Quota** still runs right away.
 - Fix: every account except the one in use could end up showing “No subscription quota reported”. A lock file of Claude Code (`.oauth_refresh.lock`) that existed in `~/.claude` for a moment was linked into the account folders; once it was gone, Claude Code could no longer refresh the login of those accounts, so `/usage` printed no limits. Lock and temp files are no longer linked, and broken links are removed on the next refresh.
